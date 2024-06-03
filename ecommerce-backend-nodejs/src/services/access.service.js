@@ -6,6 +6,10 @@ const crypto = require('node:crypto')
 const KeyTokenService = require('./keyToken.service')
 const { createTokenPair } = require('../auth/authUtils')
 const { getInfoData } = require('../utils')
+const {
+  BadRequestError,
+  ConflictRequestError,
+} = require('../core/error.response')
 
 const RoleShop = {
   SHOP: 'SHOP',
@@ -20,10 +24,7 @@ class AccessService {
       // Check email exist
       const holderShop = await shopModel.findOne({ email }).lean()
       if (holderShop) {
-        return {
-          code: 'xxxx',
-          message: 'Shop already exists',
-        }
+        throw new BadRequestError(`shop already  exists `)
       }
 
       const passwordHash = await bcrypt.hash(password, 10)
