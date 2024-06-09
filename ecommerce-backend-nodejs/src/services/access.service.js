@@ -20,67 +20,59 @@ const RoleShop = {
 
 class AccessService {
   static signUp = async ({ name, email, password }) => {
-    try {
-      // Check email exist
-      const holderShop = await shopModel.findOne({ email }).lean()
-      if (holderShop) {
-        throw new BadRequestError(`shop already  exists `)
-      }
+    // Check email exist
+    const holderShop = await shopModel.findOne({ email }).lean()
+    if (holderShop) {
+      throw new BadRequestError(`shop already exists`)
+    }
 
-      const passwordHash = await bcrypt.hash(password, 10)
-      const newShop = await shopModel.create({
-        name,
-        email,
-        password: passwordHash,
-        roles: [RoleShop.SHOP],
+    const passwordHash = await bcrypt.hash(password, 10)
+    const newShop = await shopModel.create({
+      name,
+      email,
+      password: passwordHash,
+      roles: [RoleShop.SHOP],
+    })
+
+    if (newShop) {
+      const publicKey = crypto.randomBytes(64).toString('hex')
+      const privateKey = crypto.randomBytes(64).toString('hex')
+      console.log({ privateKey, publicKey })
+      const keyStore = await KeyTokenService.createKeyToken({
+        userId: newShop._id,
+        publicKey: publicKey,
+        privateKey: privateKey,
       })
 
-      if (newShop) {
-        const publicKey = crypto.randomBytes(64).toString('hex')
-        const privateKey = crypto.randomBytes(64).toString('hex')
-        console.log({ privateKey, publicKey })
-        const keyStore = await KeyTokenService.createKeyToken({
-          userId: newShop._id,
-          publicKey: publicKey,
-          privateKey: privateKey,
-        })
-
-        if (!keyStore) {
-          return {
-            code: 'xxxx',
-            message: 'publicKeystring error',
-          }
-        }
-
-        //create token
-        const tokens = await createTokenPair(
-          { userId: newShop._id, email: newShop.email },
-          publicKey,
-          privateKey
-        )
-
+      if (!keyStore) {
         return {
-          code: 201,
-          metadata: {
-            shop: getInfoData({
-              fileds: ['_id', 'name', 'email'],
-              object: newShop,
-            }),
-            tokens,
-          },
+          code: 'xxxx',
+          message: 'publicKeystring error',
         }
       }
 
+      //create token
+      const tokens = await createTokenPair(
+        { userId: newShop._id, email: newShop.email },
+        publicKey,
+        privateKey
+      )
+
       return {
-        code: 200,
-        metadata: null,
+        code: 201,
+        metadata: {
+          shop: getInfoData({
+            fileds: ['_id', 'name', 'email'],
+            object: newShop,
+          }),
+          tokens,
+        },
       }
-    } catch (error) {
-      return {
-        code: 'xxx',
-        message: error.message,
-        status: 'error',
-      }
+    }
+
+    return {
+      code: 200,
+      metadata: null,
     }
   }
 }
